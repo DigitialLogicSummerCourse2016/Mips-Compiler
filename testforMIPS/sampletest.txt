@@ -1,0 +1,22 @@
+add $a1,$t1,$t2
+
+sll $a1,$t1,2
+
+lui $t2,5
+
+lw $t1,2($t2)
+sw $a1,1($t1)
+
+addi $a1,$a1,1
+
+Label:
+add $a1,$t1,$t2 #30
+addi $a1,$a1,1
+La:
+addi $a1,$a1,1
+sw $a1,1($t1)
+jal La
+jalr $t1,$t2
+jr $ra
+beq $a1,$a2,La
+bgez $a1,La

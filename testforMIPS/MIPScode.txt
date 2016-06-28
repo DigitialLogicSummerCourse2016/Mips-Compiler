@@ -1,0 +1,149 @@
+RESET:	j	INIT
+ILLOP:	j	INTRPT
+XADR:	j	EXPT
+EXPT:	jr	$ra
+INIT:	addi	$t0,	$zero,	0x3f	#0
+	sw	$t0,	0($zero)
+	addi	$t1,	$zero,	0x06	#1
+	sw	$t1,	4($zero)
+	addi	$t0,	$zero,	0x5b	#2
+	sw	$t0,	8($zero)
+	addi	$t1,	$zero,	0x4f	#3
+	sw	$t1,	12($zero)
+	addi	$t0,	$zero,	0x66	#4
+	sw	$t0,	16($zero)
+	addi	$t1,	$zero,	0x6d	#5
+	sw	$t1,	20($zero)
+	addi	$t0,	$zero,	0x7d	#6
+	sw	$t0,	24($zero)
+	addi	$t1,	$zero,	0x07	#7
+	sw	$t1,	28($zero)
+	addi	$t0,	$zero,	0x7f	#8
+	sw	$t0,	32($zero)
+	addi	$t1,	$zero,	0x6f	#9
+	sw	$t1,	36($zero)
+	addi	$t0,	$zero,	0x77	#a
+	sw	$t0,	40($zero)
+	addi	$t1,	$zero,	0x7c	#b
+	sw	$t1,	44($zero)
+	addi	$t0,	$zero,	0x39	#c
+	sw	$t0,	48($zero)
+	addi	$t1,	$zero,	0x5e	#d
+	sw	$t1,	52($zero)
+	addi	$t0,	$zero,	0x7b	#e
+	sw	$t0,	56($zero)
+	addi	$t1,	$zero,	0x71	#f
+	sw	$t1,	60($zero)
+	addi	$s7,	$zero,	1	#digi
+	lui	$gp,	0x4000
+	sw	$zero,	8($gp)		#set Timer COntrol
+	addi	$t1,	$zero,	3
+	sw	$t1,	32($gp)		#set UART Control
+STAY:	j	STAY			#stay here in the end
+MAIN:	lui	$t5,	0xffff
+	ori	$t5,	0x3caf
+	sw	$t5,	0($gp)
+	sw	$t5,	4($gp)
+	addi	$t6,	$zero,	3
+	sw	$t6,	8($gp)
+bgcd:	addi	$sp,	$sp,	-16
+	sw	$s4,	12($sp)		#counter of 2
+	sw	$s2,	8($sp)		#num1even
+	sw	$s3,	4($sp)		#num2even
+	sw	$ra,	0($sp)
+	beq	$a0,	$zero,	Return1	#num1==0
+	beq	$a1,	$zero,	Return2	#num2==0
+	addi	$t1,	$zero,	1
+	and	$s2,	$a0,	$t1	#num1even
+	and	$s3,	$a1,	$t1	#num2even
+	addi	$t1,	$zero,	1
+	or	$t2,	$s2,	$s3
+	bne	$t1,	$t2,	ALLEVEN
+	and	$t1,	$s2,	$s3
+	bne	$t1,	$zero,	ALLODD
+	beq	$s2,	$zero,	ONEEVEN
+	beq	$s3,	$zero,	TWOEVEN
+ALLEVEN:srl	$a0,	$a0,	1	# num1 = num1 >> 1
+    	srl	$a1,	$a1,	1	# num2 = num2 >> 1
+    	addi	$s4,	$s4,	1	# s4++
+    	jal	bgcd
+ONEEVEN:srl	$a0,	$a0,	1		#num1 = num1>>1
+	add	$a1,	$a1,	$zero	#num2 keep
+	jal	bgcd
+TWOEVEN:srl	$a1,	$a1,	1		#num2 = num2>>1
+	add	$a0,	$a0,	$zero	#num1 keep
+	jal 	bgcd
+ALLODD:	slt	$t1,	$a0,	$a1	#num1<num2 -> t1=1
+	bne	$t1,	$zero,	ONELTWO
+	sub	$t1,	$a0,	$a1	#num1>num2
+	srl	$t1,	$t1,	1
+	add	$a0	$t1,	$zero	#num1 = (num1 - num2)>>1
+	add	$a1,	$a1,	$zero	#num2 keep
+	jal	bgcd
+ONELTWO:sub	$t1,	$a1,	$a0	#num1<num2
+	srl	$t1,	$t1,	1
+	add	$a1,	$t1,	$zero	#num2 = (num2 - num1)>>1;
+	add	$a0,	$a0,	$zero	#num1 keep
+	jal	bgcd
+Return1:add	$v0,	$zero,	$a1	#num1==0 #return num2
+	j	LOOP
+Return2:add	$v0,	$zero,	$a0	#num2==0 #return num1
+	j	LOOP
+LOOP:	beq	$s4,	$zero,	GCDFIN
+	sll	$v0,	$v0,	1
+	addi	$t1,	$zero,	1
+	sub	$s4,	$s4,	$t1
+	j	LOOP
+GCDFIN:	sw	$v0,	24($gp)
+	sw	$v0,	12($gp)
+	j	STAY
+INTRPT:	lw	$t7,	32($gp)		#Load UART Control
+	slti	$t1,	$t7,	8	#Judge whether is sending intrpt
+	bne	$t1,	$zero,	TIMER
+	lw	$s0,	28($gp)
+	bne	$s6,	$zero,	ALREADY	#Judge whether has already gotten a parameter
+	add	$a0,	$zero,	$s0
+	add $t8,	$zero,	$s0
+	addi	$s6,	$s6,	1
+	jr	$k0
+ALREADY:add	$a1,	$zero,	$s0
+	add	$t9,	$zero,	$s0
+	add	$s6,	$zero,	$zero
+	add	$s0,	$zero,	$zero
+	addi	$t1,	$zero,	1
+	sw	$t1,	32($gp)
+	addi	$k0,	$k0,	4
+	jr	$k0
+TIMER:	lui	$t0,	0xffff
+	ori	$t0,	$t0,	0xfff9
+	lw	$t1,	8($gp)
+	and	$t1,	$t1,	$t0
+	sw	$t1,	8($gp)
+DIGI:	sll	$t2,	$s7,	8
+	slti	$t7,	$t2,	0x400
+	bne	$t7,	$zero,	SECOND
+FIRST:	slti	$t6,	$t2,	0x800
+	bne	$t6,	$zero	FIRSTL
+FIRSTH:	andi	$t4,	$t8,	0x00f0
+	srl	$t4,	$t4,	4
+	j	DISPLAY
+FIRSTL:	andi	$t4,	$t8,	0x000f
+	j	DISPLAY
+SECOND:	slti 	$t6,	$t2,	0x200
+	bne	$t6,	$zero,	SECONDL
+SECONDH:andi	$t4,	$t9,	0x00f0
+	srl	$t4,	$t4,	4
+	j	DISPLAY
+SECONDL:andi	$t4,	$t9,	0x000f
+DISPLAY:sll	$t4,	$t4,	2
+	lw	$t4,	0($t4)
+	add	$t2,	$t2,	$t4
+	sw	$t2,	20($gp)
+	sll	$s7,	$s7,	1
+	slti	$t6,	$s7,	0x09
+	bne	$t6,	$zero,	FIN
+	addi	$s7,	$zero,	1
+FIN:	lw	$t1,	8($gp)
+	ori	$t1,	$t1,	0x0002
+	sw	$t1,	8($gp)
+	jr	$k0
